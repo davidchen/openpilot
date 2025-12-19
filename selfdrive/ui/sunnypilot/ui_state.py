@@ -65,6 +65,43 @@ class UIStateSP:
 
     return "disengaged"
 
+  @staticmethod
+  def update_status(ss, ss_sp, onroad_evt) -> str:
+    state = ss.state
+    mads = ss_sp.mads
+    mads_state = mads.state
+
+    if state == OpenpilotState.preEnabled:
+      return "override"
+
+    if state == OpenpilotState.overriding:
+      if not mads.available:
+        return "override"
+
+      if any(e.overrideLongitudinal for e in onroad_evt) and not mads.enabled:
+        return "override"
+
+    if mads_state in (MADSState.paused, MADSState.overriding):
+      return "override"
+
+    # MADS specific statuses
+    if not mads.available:
+      return "engaged" if ss.enabled else "disengaged"
+
+    if not mads.enabled and not ss.enabled:
+      return "disengaged"
+
+    if mads.enabled and ss.enabled:
+      return "engaged"
+
+    if mads.enabled:
+      return "lat_only"
+
+    if ss.enabled:
+      return "long_only"
+
+    return "disengaged"
+
   def update_params(self) -> None:
     CP_SP_bytes = self.params.get("CarParamsSPPersistent")
     if CP_SP_bytes is not None:
